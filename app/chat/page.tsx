@@ -67,7 +67,11 @@ export default function ChatPage() {
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || !token) return;
+        if (!input.trim()) return;
+        if (!token) {
+            toast.error("You must be logged in to query the knowledge graph.");
+            return;
+        }
 
         const userMessage: Message = { id: Date.now().toString(), role: "user", content: input };
         setMessages(prev => [...prev, userMessage]);

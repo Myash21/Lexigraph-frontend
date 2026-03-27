@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
     ReactFlow,
     Background,
@@ -16,7 +16,7 @@ import { useAuth } from "@/components/auth-provider";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Info, X } from "lucide-react";
+import { Loader2, Info, X, RefreshCw } from "lucide-react";
 import dagre from "dagre";
 
 interface GraphData {
@@ -62,6 +62,7 @@ export default function GraphPage() {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(false);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
     // Track 1-hop highlights
@@ -69,6 +70,7 @@ export default function GraphPage() {
 
     const fetchGraph = useCallback(async () => {
         if (!token) return;
+        setFetchError(false);
         try {
             setIsLoading(true);
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -123,6 +125,7 @@ export default function GraphPage() {
             setEdges(layouted.edges);
 
         } catch (error) {
+            setFetchError(true);
             toast.error("Could not render the knowledge graph.");
         } finally {
             setIsLoading(false);
@@ -211,6 +214,19 @@ export default function GraphPage() {
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 z-10 backdrop-blur-sm">
                             <Loader2 className="h-8 w-8 animate-spin text-brand mb-4" />
                             <p className="text-muted-foreground font-medium">Loading network data...</p>
+                        </div>
+                    ) : fetchError ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 gap-4">
+                            <Info className="h-10 w-10 text-muted-foreground" />
+                            <p className="text-lg font-medium">Failed to load graph</p>
+                            <p className="text-muted-foreground text-sm">The server may be waking up.</p>
+                            <button
+                                onClick={fetchGraph}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium hover:bg-muted transition-colors"
+                            >
+                                <RefreshCw className="h-4 w-4" />
+                                Retry
+                            </button>
                         </div>
                     ) : nodes.length === 0 ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
