@@ -177,6 +177,18 @@ Authorization: Bearer <access_token>
   }
 }
 ```
+**Graph**
+- `GET /graph` → `{ nodes: Node[], edges: Edge[] }`
+  - Node: `{ id: string, type: string, source: string | null }`
+  - Edge: `{ source: string, target: string, type: string }`
+
+**Documents**
+- `GET /documents` → `{ documents: Document[] }`
+  - Document: `{ id: string, source: string, createdAt: string }`
+
+**Documents**
+- `DELETE /documents` → `{ success: boolean, message: string, deletedChunks: number, deletedNodes: number }`
+  - Body: `{ source: string }`
 
 ---
 
