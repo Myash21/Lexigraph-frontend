@@ -186,7 +186,6 @@ Authorization: Bearer <access_token>
 - `GET /documents` → `{ documents: Document[] }`
   - Document: `{ id: string, source: string, createdAt: string }`
 
-**Documents**
 - `DELETE /documents` → `{ success: boolean, message: string, deletedChunks: number, deletedNodes: number }`
   - Body: `{ source: string }`
 

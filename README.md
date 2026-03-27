@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LexiGraph — Knowledge Graph Visualizer & Query Engine
 
-## Getting Started
+LexiGraph is a modern AI-powered platform that transforms your static documents and URLs into a dynamic, queryable knowledge graph. It uses RAG (Retrieval-Augmented Generation) combined with graph-based search to provide deep insights with high-fidelity source attribution.
 
-First, run the development server:
+## 🚀 Key Features
+
+*   **Intelligent Ingestion**: Support for PDF, TXT, and Markdown files, plus direct URL scraping.
+*   **Semantic Chat**: Query your data using natural language with source-attributed answers.
+*   **Knowledge Graph Visualization**: interactive 2D graph explore entities (Persons, Organizations, Concepts, etc.) and their relationships extracted from your documents.
+*   **Source Attribution**: Every AI response comes with clear semantic and graph-based source cards for transparency.
+*   **Secure Auth**: Built-in authentication and protected routes.
+
+## 🛠️ Tech Stack
+
+*   **Core**: [Next.js 15](https://nextjs.org/) (App Router)
+*   **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+*   **Graph Engine**: [React Flow](https://reactflow.dev/)
+*   **Icons**: [Lucide React](https://lucide.dev/)
+*   **State Management**: React Hooks & Context API
+
+## 🏁 Getting Started
+
+### 1. Prerequisites
+- Node.js 18.x or later
+- Access to the LexiGraph Backend API
+
+### 2. Environment Variables
+Create a `.env.local` file in the root directory:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### 3. Installation & Development
 
 ```bash
+# Install dependencies
+npm install
+
+# Run the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📁 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+*   `/app` — Main application routes (Dashboard, Chat, Graph).
+*   `/components` — Shared UI components and Auth providers.
+*   `/lib` — Utility functions and shared logic.
 
-## Learn More
+## 🌐 Deployment
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The project is configured for easy deployment on **Vercel**. Simply connect your repository and ensure the `NEXT_PUBLIC_API_URL` environment variable is set in your Vercel project dashboard.
