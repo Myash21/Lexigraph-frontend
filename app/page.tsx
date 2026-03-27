@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { UploadCloud, FileText, Link as LinkIcon, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,10 +23,30 @@ export default function DashboardPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [urlInput, setUrlInput] = useState("");
 
-  // Temporary mock documents list
-  const [documents, setDocuments] = useState<Document[]>([
-    { id: "1", filename: "sample_contract.pdf", sourceType: "file", createdAt: new Date().toISOString() }
-  ]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchDocuments = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${apiUrl}/documents`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setDocuments(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch documents", error);
+      }
+    };
+
+    fetchDocuments();
+  }, [token]);
 
   const handleUpload = async (file: File) => {
     if (!token) {
