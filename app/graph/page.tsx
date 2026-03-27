@@ -16,7 +16,7 @@ import { useAuth } from "@/components/auth-provider";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Info } from "lucide-react";
+import { Loader2, Info, X } from "lucide-react";
 import dagre from "dagre";
 
 interface GraphData {
@@ -97,6 +97,10 @@ export default function GraphPage() {
                         boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                         opacity: 1, // default full opacity
                         transition: "all 0.3s ease",
+                        maxWidth: "200px",
+                        wordWrap: "break-word",
+                        whiteSpace: "pre-wrap",
+                        textAlign: "center"
                     }
                 };
             });
@@ -150,8 +154,7 @@ export default function GraphPage() {
                 ...n.style,
                 opacity: connectedNodeIds.has(n.id) ? 1 : 0.2, // dim outsiders
                 filter: connectedNodeIds.has(n.id) ? "none" : "grayscale(100%)",
-                transform: n.id === node.id ? "scale(1.05)" : "scale(1)",
-                boxShadow: n.id === node.id ? "0 0 0 4px rgba(0,0,0,0.1)" : n.style?.boxShadow,
+                boxShadow: n.id === node.id ? "0 0 0 4px rgba(0,0,0,0.1)" : "0 1px 3px rgba(0,0,0,0.1)",
             }
         })));
 
@@ -172,7 +175,7 @@ export default function GraphPage() {
 
         setNodes((nds) => nds.map((n) => ({
             ...n,
-            style: { ...n.style, opacity: 1, filter: "none", transform: "scale(1)", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }
+            style: { ...n.style, opacity: 1, filter: "none", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }
         })));
 
         setEdges((eds) => eds.map((e) => ({
@@ -232,57 +235,65 @@ export default function GraphPage() {
                             <Controls className="bg-background shadow-md border rounded-md overflow-hidden fill-foreground" />
                         </ReactFlow>
                     )}
-                </div>
 
-                {/* Sidebar Panel for Node Metadata */}
-                {selectedNode && (
-                    <Card className="w-80 h-full overflow-y-auto animate-in slide-in-from-right-4 bg-background shadow-lg">
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-lg flex items-center justify-between">
-                                Entity Details
-                                <Badge style={{ backgroundColor: colorMap[String(selectedNode.data.type)] || "#94a3b8" }} className="ml-2 text-white">
-                                    {String(selectedNode.data.type)}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div>
-                                <h3 className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Identifier</h3>
-                                <p className="font-medium break-all">{String(selectedNode.data.label)}</p>
-                            </div>
-
-                            {Boolean(selectedNode.data.source) && (
+                    {/* Sidebar Panel for Node Metadata */}
+                    {selectedNode && (
+                        <Card className="absolute top-4 right-4 z-10 w-80 max-h-[calc(100%-2rem)] overflow-y-auto animate-in slide-in-from-right-4 bg-background shadow-lg border">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="text-lg flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        Entity Details
+                                        <Badge style={{ backgroundColor: colorMap[String(selectedNode.data.type)] || "#94a3b8" }} className="text-white">
+                                            {String(selectedNode.data.type)}
+                                        </Badge>
+                                    </div>
+                                    <button 
+                                        onClick={onPaneClick} 
+                                        className="p-1 rounded-md hover:bg-muted text-muted-foreground transition-colors"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Source Document</h3>
-                                    <p className="text-sm font-medium p-2 bg-muted/50 rounded-md truncate break-all" title={String(selectedNode.data.source)}>
-                                        {String(selectedNode.data.source)}
-                                    </p>
+                                    <h3 className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Identifier</h3>
+                                    <p className="font-medium break-all">{String(selectedNode.data.label)}</p>
                                 </div>
-                            )}
 
-                            <div>
-                                <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Connections</h3>
-                                <div className="space-y-2">
-                                    {edges.filter(e => e.source === selectedNode.id).map((edge, i) => (
-                                        <div key={i} className="text-xs p-2 bg-muted/30 border rounded-md">
-                                            <span className="text-muted-foreground font-mono">-[{edge.label}]-&gt;</span>{" "}
-                                            <span className="font-medium ml-1">{edge.target}</span>
-                                        </div>
-                                    ))}
-                                    {edges.filter(e => e.target === selectedNode.id).map((edge, i) => (
-                                        <div key={i} className="text-xs p-2 bg-muted/30 border rounded-md">
-                                            <span className="text-muted-foreground font-mono">&lt;-[{edge.label}]-</span>{" "}
-                                            <span className="font-medium ml-1">{edge.source}</span>
-                                        </div>
-                                    ))}
-                                    {edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id).length === 0 && (
-                                        <p className="text-xs text-muted-foreground italic">No connections</p>
-                                    )}
+                                {Boolean(selectedNode.data.source) && (
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Source Document</h3>
+                                        <p className="text-sm font-medium p-2 bg-muted/50 rounded-md truncate break-all" title={String(selectedNode.data.source)}>
+                                            {String(selectedNode.data.source)}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Connections</h3>
+                                    <div className="space-y-2">
+                                        {edges.filter(e => e.source === selectedNode.id).map((edge, i) => (
+                                            <div key={i} className="text-xs p-2 bg-muted/30 border rounded-md">
+                                                <span className="text-muted-foreground font-mono">-[{edge.label}]-&gt;</span>{" "}
+                                                <span className="font-medium ml-1">{edge.target}</span>
+                                            </div>
+                                        ))}
+                                        {edges.filter(e => e.target === selectedNode.id).map((edge, i) => (
+                                            <div key={i} className="text-xs p-2 bg-muted/30 border rounded-md">
+                                                <span className="text-muted-foreground font-mono">&lt;-[{edge.label}]-</span>{" "}
+                                                <span className="font-medium ml-1">{edge.source}</span>
+                                            </div>
+                                        ))}
+                                        {edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id).length === 0 && (
+                                            <p className="text-xs text-muted-foreground italic">No connections</p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
             </div>
         </div>
     );
