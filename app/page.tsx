@@ -2,18 +2,16 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { UploadCloud, FileText, Link as LinkIcon, Loader2, CheckCircle2 } from "lucide-react";
+import { UploadCloud, FileText, Link as LinkIcon, Loader2, CheckCircle2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/auth-provider";
 
-// Mock types for documents list
 interface Document {
   id: string;
-  filename: string;
-  sourceType: "file" | "url";
+  source: string;
   createdAt: string;
 }
 
@@ -24,29 +22,36 @@ export default function DashboardPage() {
   const [urlInput, setUrlInput] = useState("");
 
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isFetchingDocs, setIsFetchingDocs] = useState(false);
+  const [fetchDocsError, setFetchDocsError] = useState(false);
+
+  const fetchDocuments = useCallback(async () => {
+    if (!token) return;
+    setIsFetchingDocs(true);
+    setFetchDocsError(false);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/documents`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data.documents);
+      } else {
+        throw new Error(`Server responded with ${res.status}`);
+      }
+    } catch (error) {
+      setFetchDocsError(true);
+      toast.error("Could not load documents. The server may be waking up — try again.");
+    } finally {
+      setIsFetchingDocs(false);
+    }
+  }, [token]);
 
   useEffect(() => {
-    if (!token) return;
-
-    const fetchDocuments = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const res = await fetch(`${apiUrl}/documents`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setDocuments(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch documents", error);
-      }
-    };
-
     fetchDocuments();
-  }, [token]);
+  }, [fetchDocuments]);
 
   const handleUpload = async (file: File) => {
     if (!token) {
@@ -84,9 +89,9 @@ export default function DashboardPage() {
 
       toast.success("Document successfully uploaded and ingested");
 
-      // Update our mock list
+      // Update documents list
       setDocuments(prev => [
-        { id: Math.random().toString(), filename: file.name, sourceType: "file", createdAt: new Date().toISOString() },
+        { id: Math.random().toString(), source: file.name, createdAt: new Date().toISOString() },
         ...prev
       ]);
 
@@ -150,7 +155,7 @@ export default function DashboardPage() {
       toast.success("URL successfully ingested");
 
       setDocuments(prev => [
-        { id: Math.random().toString(), filename: urlInput, sourceType: "url", createdAt: new Date().toISOString() },
+        { id: Math.random().toString(), source: urlInput, createdAt: new Date().toISOString() },
         ...prev
       ]);
       setUrlInput("");
@@ -163,6 +168,31 @@ export default function DashboardPage() {
         setIsUploading(false);
         setUploadProgress(0);
       }, 1000);
+    }
+  };
+
+  const handleDelete = async (doc: Document) => {
+    if (!token) return;
+    setDeletingId(doc.id);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const response = await fetch(`${apiUrl}/documents`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ source: doc.source }),
+      });
+
+      if (!response.ok) throw new Error("Failed to delete document");
+
+      toast.success("Document deleted successfully");
+      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error deleting document");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -246,7 +276,21 @@ export default function DashboardPage() {
           </h2>
 
           <div className="space-y-3">
-            {documents.length === 0 ? (
+            {isFetchingDocs ? (
+              <div className="space-y-2 pt-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-14 rounded-lg bg-muted/50 animate-pulse" />
+                ))}
+              </div>
+            ) : fetchDocsError ? (
+              <div className="text-center py-10 space-y-3">
+                <p className="text-muted-foreground text-sm">Failed to load documents.</p>
+                <Button variant="outline" size="sm" onClick={fetchDocuments}>
+                  <Loader2 className="h-3.5 w-3.5 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            ) : documents.length === 0 ? (
               <p className="text-center text-muted-foreground py-10">
                 No documents ingested yet.
               </p>
@@ -255,16 +299,25 @@ export default function DashboardPage() {
                 <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg bg-background border shadow-sm transition-all hover:shadow-md">
                   <div className="flex items-center gap-3 overflow-hidden">
                     <div className="bg-brand/10 p-2 rounded-md text-brand">
-                      {doc.sourceType === "file" ? <FileText className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+                      {doc.source.startsWith("http") ? <LinkIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                     </div>
                     <div className="truncate pr-4">
-                      <p className="font-medium text-sm truncate">{doc.filename}</p>
+                      <p className="font-medium text-sm truncate">{doc.source}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                  <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                  <button
+                    onClick={() => handleDelete(doc)}
+                    disabled={deletingId === doc.id}
+                    className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                    title="Delete document"
+                  >
+                    {deletingId === doc.id
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Trash2 className="h-4 w-4" />}
+                  </button>
                 </div>
               ))
             )}
