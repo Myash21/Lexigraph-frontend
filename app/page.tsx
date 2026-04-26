@@ -1,57 +1,23 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { UploadCloud, FileText, Link as LinkIcon, Loader2, CheckCircle2, Trash2 } from "lucide-react";
+import { UploadCloud, FileText, Link as LinkIcon, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/auth-provider";
-
-interface Document {
-  id: string;
-  source: string;
-  createdAt: string;
-}
+import { useDocuments } from "@/lib/app-context";
 
 export default function DashboardPage() {
   const { token } = useAuth();
+  const { documents, isFetchingDocs, fetchDocsError, fetchDocuments, invalidateDocs, setDocuments } = useDocuments();
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [urlInput, setUrlInput] = useState("");
-
-  const [documents, setDocuments] = useState<Document[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isFetchingDocs, setIsFetchingDocs] = useState(false);
-  const [fetchDocsError, setFetchDocsError] = useState(false);
-
-  const fetchDocuments = useCallback(async () => {
-    if (!token) return;
-    setIsFetchingDocs(true);
-    setFetchDocsError(false);
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${apiUrl}/documents`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDocuments(data.documents);
-      } else {
-        throw new Error(`Server responded with ${res.status}`);
-      }
-    } catch (error) {
-      setFetchDocsError(true);
-      toast.error("Could not load documents. The server may be waking up — try again.");
-    } finally {
-      setIsFetchingDocs(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
 
   const handleUpload = async (file: File) => {
     if (!token) {
@@ -62,7 +28,6 @@ export default function DashboardPage() {
     setIsUploading(true);
     setUploadProgress(0);
 
-    // Simulate progress while waiting for the API
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => Math.min(prev + 10, 90));
     }, 500);
@@ -74,26 +39,18 @@ export default function DashboardPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const response = await fetch(`${apiUrl}/ingest`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
+        headers: { "Authorization": `Bearer ${token}` },
         body: formData,
       });
 
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      if (!response.ok) {
-        throw new Error("Failed to upload document");
-      }
+      if (!response.ok) throw new Error("Failed to upload document");
 
       toast.success("Document successfully uploaded and ingested");
-
-      // Update documents list
-      setDocuments(prev => [
-        { id: Math.random().toString(), source: file.name, createdAt: new Date().toISOString() },
-        ...prev
-      ]);
+      // Re-fetch from server to get the canonical document list
+      await invalidateDocs();
 
     } catch (error) {
       clearInterval(progressInterval);
@@ -108,9 +65,7 @@ export default function DashboardPage() {
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      handleUpload(acceptedFiles[0]);
-    }
+    if (acceptedFiles.length > 0) handleUpload(acceptedFiles[0]);
   }, [token]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -119,14 +74,13 @@ export default function DashboardPage() {
     accept: {
       'application/pdf': ['.pdf'],
       'text/plain': ['.txt'],
-      'text/markdown': ['.md']
-    }
+      'text/markdown': ['.md'],
+    },
   });
 
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!urlInput.trim()) return;
-
     if (!token) {
       toast.error("You must be logged in to ingest URLs.");
       return;
@@ -141,24 +95,17 @@ export default function DashboardPage() {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ url: urlInput }),
       });
 
       setUploadProgress(100);
-
-      if (!response.ok) {
-        throw new Error("Failed to ingest URL");
-      }
+      if (!response.ok) throw new Error("Failed to ingest URL");
 
       toast.success("URL successfully ingested");
-
-      setDocuments(prev => [
-        { id: Math.random().toString(), source: urlInput, createdAt: new Date().toISOString() },
-        ...prev
-      ]);
       setUrlInput("");
+      await invalidateDocs();
 
     } catch (error) {
       setUploadProgress(0);
@@ -171,7 +118,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDelete = async (doc: Document) => {
+  const handleDelete = async (doc: { id: string; source: string; createdAt: string }) => {
     if (!token) return;
     setDeletingId(doc.id);
     try {
@@ -180,7 +127,7 @@ export default function DashboardPage() {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ source: doc.source }),
       });
@@ -188,6 +135,7 @@ export default function DashboardPage() {
       if (!response.ok) throw new Error("Failed to delete document");
 
       toast.success("Document deleted successfully");
+      // Optimistic update — remove from context immediately
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error deleting document");
